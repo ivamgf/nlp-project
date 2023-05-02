@@ -6,7 +6,6 @@ import nltk
 from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.corpus import stopwords
 from string import punctuation
-from nltk.stem import PorterStemmer
 
 # Downloads
 nltk.download('punkt')
@@ -14,9 +13,6 @@ nltk.download('stopwords')
 
 # Define the list of stopwords for the Portuguese language
 stop_words = set(stopwords.words('portuguese'))
-
-# Create the Stemmer
-stemmer = PorterStemmer()
 
 # Use double backslashes in file or directory path
 path = "C:\\Dataset"
@@ -60,14 +56,8 @@ for file in files:
                        word not in punctuation
                 ]
 
-                # Apply stemming to each word
-                words_stemming = [
-                    stemmer.stem(word)
-                    for word in filtered_words
-                ]
-
                 # Put the filtered words together into a sentence again
-                filtered_sentence = ' '.join(words_stemming)
+                filtered_sentence = ' '.join(filtered_words)
 
                 # Print the sentences
                 print(filtered_sentence)
