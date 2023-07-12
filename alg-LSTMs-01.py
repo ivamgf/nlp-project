@@ -1,26 +1,37 @@
-# Algorithm 1 - dataset cleaning, pre-processing XML and create embeddings
-# Implemented RNN with LSTMs
+# Algorithm 2 - BILSTM-CE Model training
+# Dataset cleaning, pre-processing XML and create slots and embeddings
+# RNN Bidiretional LSTM Layer
 # Results in file and browser
 
 # Imports
-# Imports
 import os
-import nltk
 import xml.etree.ElementTree as ET
-import spacy
-from gensim.models import Word2Vec
-from datetime import datetime
-import hashlib
 import webbrowser
+import nltk
+from keras.layers import Dense
+from nltk.tokenize import sent_tokenize, word_tokenize
+import string
+from gensim.models import Word2Vec
 import tensorflow as tf
 import numpy as np
 
+# Downloads
 nltk.download('punkt')
 
+# Directory path
 path = "C:\\Dataset-TRT"
 files = os.listdir(path)
 
-nlp = spacy.load("pt_core_news_sm")
+output_dir = "C:\\Outputs"
+os.makedirs(output_dir, exist_ok=True)
+
+output_html = ""
+
+output_html += "<h3>Arquivos encontrados no diretório:</h3>"
+
+slot_number = 1
+
+# Functions
 
 # Function to replace words
 def replace_words(text):
@@ -29,7 +40,20 @@ def replace_words(text):
         "AssÃ©dio moral": "Assedio moral",
         "HonorÃ¡rios sucumbenciais": "Honorarios sucumbenciais",
         "Estabilidade acidentÃ¡ria": "Estabilidade acidentaria",
-        "DoenÃ§a ocupacional": "Doenca ocupacional"
+        "DoenÃ§a ocupacional": "Doenca ocupacional",
+        "doenÃ§a": "doenca",
+        "doenÃ§as": "doencas",
+        "rÃ©": "re",
+        "nÃ£o": "nao",
+        "sÃ£o": "sao",
+        "forÃ§a": "foram",
+        "benefÃ­cio": "beneficio",
+        "auxÃ­lio": "auxilio",
+        "previdenciÃ¡rio": "previdenciario",
+        "existÃªncia": "existencia",
+        "necessÃ¡rio": "necessario",
+        "contrÃ¡rio": "contrario",
+        "vÃ¡lvula": "valvula"
     }
     for old_word, new_word in word_replacements.items():
         text = text.replace(old_word, new_word)
@@ -42,32 +66,25 @@ def replace_expression(text):
         "AssÃ©dio moral": "Assedio moral",
         "HonorÃ¡rios sucumbenciais": "Honorarios sucumbenciais",
         "Estabilidade acidentÃ¡ria": "Estabilidade acidentaria",
-        "DoenÃ§a ocupacional": "Doenca ocupacional"
+        "DoenÃ§a ocupacional": "Doenca ocupacional",
+        "doenÃ§a": "doenca",
+        "doenÃ§as": "doencas"
     }
     for expression, replacement in expressions.items():
         text = text.replace(expression, replacement)
     return text
 
-# Function to create char embeddings
-def create_char_embeddings(word):
-    char_indices = {char: i + 1 for i, char in enumerate(set(word))}
-    text_indices = [char_indices[char] for char in word]
-    return np.array(text_indices)
+# Tokenize the sentences into words and create skipgram Word2Vec
+def tokenize_sentence(sentence):
+    tokens = word_tokenize(sentence)
+    tokens = [token.lower() for token in tokens if token.lower() not in string.punctuation]
 
-output_dir = "C:\\Outputs"
-current_datetime = datetime.now()
-timestamp = current_datetime.strftime("%Y%m%d%H%M%S")
-hash_value = hashlib.md5(current_datetime.isoformat().encode()).hexdigest()
+    # Create skipgram Word2Vec model for the sentence
+    model = Word2Vec(sentences=[tokens], min_count=1, workers=2, sg=1, window=5)
 
-output_file_txt = os.path.join(output_dir, f"output_{timestamp}_{hash_value}.txt")
-output_file_html = os.path.join(output_dir, f"output_{timestamp}_{hash_value}.html")
+    return model
 
-os.makedirs(output_dir, exist_ok=True)
-
-output_html = ""
-
-output_html += "<h3>Arquivos encontrados no diretório:</h3>"
-
+# Loop through files in directory
 for file in files:
     if file.endswith(".xml"):
         output_html += f"<p>{file}</p>"
@@ -77,101 +94,138 @@ for file in files:
 
         output_html += f"<h4>Conteúdo do arquivo {file}:</h4>"
         sentences = []
-        for element in root.iter("webanno.custom.Judgmentsentity"):
-            if (
-                "sofa" in element.attrib and
-                "begin" in element.attrib and
-                "end" in element.attrib and
-                "Instance" in element.attrib and
-                "Value" in element.attrib
-            ):
-                sofa = element.attrib["sofa"]
-                begin = element.attrib["begin"]
-                end = element.attrib["end"]
-                instance = element.attrib["Instance"]
-                value = element.attrib["Value"]
 
-                instance = replace_words(instance)
-                value = replace_words(value)
+        # Loop through sentences
+        for sentence in root.iter('de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Sentence'):
+            tokens = []
+            for token in sentence.iter('de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Token'):
+                tokens.append(token.text.strip())
 
-                for child in element:
-                    if child.text:
-                        text = child.text.strip().lower()
-                        text = replace_words(text)
-                        text = replace_expression(text)
-                        doc = nlp(text)
-                        tokens = [token.text for token in doc]
-                        sentences.append(tokens)
+            # Checks if the sentence contains the specific tags
+            if sentence.find(".//webanno.custom.Judgmentsentity") is not None:
+                annotated_word = sentence.find(
+                    ".//webanno.custom.Judgmentsentity/de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Token").text.strip()
+                annotated_word = replace_expression(annotated_word)  # Substitui o conteúdo de annotated_word
 
-        if len(sentences) > 0:
-            model = Word2Vec(sentences, min_count=1, workers=2, sg=1, window=5)
-            model.build_vocab(sentences)
-            model.train(sentences, total_examples=model.corpus_count, epochs=model.epochs)
+                sentence_text = ' '.join(tokens)
 
-            output_html += "<h4>Vocabulary:</h4>"
-            for word in model.wv.key_to_index.keys():
-                output_html += f"<p>Token: {word}</p>"
-                output_html += f"<p>Instance: {instance}</p>"
-                output_html += f"<p>Value: {value}</p>"
-                output_html += "<p>Word Embedding:</p>"
-                output_html += f"<pre>{model.wv[word]}</pre>"
+                # Checks if the sentence has already been added
+                if sentence_text not in sentences:
+                    sentences.append(sentence_text)
 
-                # Create char embeddings for the token
-                char_embeddings = create_char_embeddings(word)
+                    # Apply word replacements
+                    sentence_text = replace_words(sentence_text)
 
-                # Concatenate word and char embeddings
-                combined = np.concatenate((model.wv[word], char_embeddings), axis=None)
+                    # Tokenize the sentences
+                    sentences_list = sent_tokenize(sentence_text)
 
-                # Reshape the combined embeddings to match the expected input shape of the LSTM layer
-                combined_embeddings = np.reshape(combined, (1, 1, -1))
+                    # Prints the sentences and the annotated word
+                    for sent_idx, sent in enumerate(sentences_list[:5]):  # Select up to 5 sentences
+                        tokenized_sent = tokenize_sentence(sent)
+                        annotated_index = tokenized_sent.wv.key_to_index.get(
+                            annotated_word.lower(), -1)
+                        context_start = max(0, annotated_index - 5)
+                        context_end = min(annotated_index + 6, len(tokenized_sent.wv.key_to_index))
+                        context_words = list(tokenized_sent.wv.key_to_index.keys())[context_start:context_end]
+                        context_words.reverse()  # Reverse the word order
 
-                # Print char embeddings
-                output_html += "<p>Char Embedding:</p>"
-                output_html += f"<pre>{char_embeddings}</pre>"
+                        # Print the Instance and Value attributes
+                        for element in root.iter("webanno.custom.Judgmentsentity"):
+                            if (
+                                    "sofa" in element.attrib and
+                                    "begin" in element.attrib and
+                                    "end" in element.attrib and
+                                    "Instance" in element.attrib and
+                                    "Value" in element.attrib
+                            ):
+                                sofa = element.attrib["sofa"]
+                                begin = element.attrib["begin"]
+                                end = element.attrib["end"]
+                                instance = element.attrib["Instance"]
+                                value = element.attrib["Value"]
 
-                # Print the concatenated embeddings
-                output_html += "<p>Concatenated Embedding:</p>"
-                output_html += f"<pre>{combined_embeddings}</pre>"
+                                instance = replace_words(instance)
+                                value = replace_words(value)
 
-                # LSTM model
-                input_size = combined_embeddings.shape[-1]  # Updated input size
-                hidden_size = 64
-                num_classes = 10
-                sequence_length = 1
+                        context_text = ' '.join(context_words)
+                        context_text = context_text.replace(annotated_word, f"[annotation]{annotated_word}[annotation]")
+                        output_html += f"<p>Sentença {slot_number}: {context_text}</p>"
+                        output_html += f"<p>Annotated Word: {annotated_word}</p>"
+                        output_html += f"<p>Instance: {instance}</p>"
+                        output_html += f"<p>Value: {value}</p>"
 
-                # Create LSTM model
-                lstm_model = tf.keras.Sequential()
-                lstm_model.add(tf.keras.layers.LSTM(hidden_size, input_shape=(sequence_length, input_size)))
-                lstm_model.add(tf.keras.layers.Dense(num_classes, activation='softmax'))
+                        # Print the token vector
+                        output_html += f"<p>Slot de Tokens {slot_number}: {context_words}</p>"
+                        output_html += "<pre>"
 
-                # Compile the model
-                lstm_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+                        # Word Embeddings
+                        for word in context_words:
+                            word_embedding = tokenized_sent.wv[word].reshape((100, 1))
+                            output_html += f"<p>{word}: {word_embedding}</p>"
+                        output_html += "</pre>"
 
-                # Generate example data
-                num_samples = 1
-                X = combined_embeddings  # No need for np.expand_dims
-                y = tf.random.uniform((num_samples, num_classes))
+                        # Bidirectional LSTM model
+                        input_size = word_embedding.shape[-1]
+                        hidden_size = 64
+                        num_classes = 10
+                        sequence_length = 1
 
-                # Train the model
-                lstm_model.fit(X, y, epochs=10, batch_size=1)
+                        # Transpose input
+                        word_embedding = np.transpose(word_embedding, (1, 0))
 
-                # Print LSTM model results
-                output_html += "<p>LSTM Model Results:</p>"
-                lstm_results = lstm_model.predict(X)
-                output_html += f"<pre>{lstm_results}</pre>"
+                        # Generate example data
+                        num_samples = 1
+                        # Reshape the input data
+                        X = word_embedding.reshape((num_samples, 1, 100))
+                        y = tf.random.uniform((num_samples, num_classes))
 
-        else:
-            output_html += "<p>Nenhuma sentença encontrada para treinar o modelo Word2Vec.</p>"
+                        # Create Bidirectional LSTM model
+                        lstm_model = tf.keras.Sequential()
+                        lstm_model.add(Dense(units=32))
+                        lstm_model.add(
+                            tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(
+                                hidden_size, input_shape=(1, 120), dropout=0.1)))
+                        lstm_model.add(tf.keras.layers.Dense(num_classes, activation='softmax'))
 
-# Save the results to output TXT file
+                        # Learning rate
+                        learning_rate = 0.01
+                        rho = 0.9
+
+                        # Optimizer
+                        optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate, rho=rho)
+
+                        # Compile o modelo
+                        lstm_model.compile(
+                            loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+
+                        # Definir paciência (patience) e EarlyStopping
+                        patience = 10
+                        early_stopping = tf.keras.callbacks.EarlyStopping(patience=patience, restore_best_weights=True)
+
+                        # Treinar o modelo com EarlyStopping
+                        lstm_model.fit(X, y, epochs=60, batch_size=32, callbacks=[early_stopping])
+
+                        # Print LSTM model results
+                        output_html += "<p>Bidirectional LSTM Model Results:</p>"
+                        lstm_results = lstm_model.predict(X)
+                        output_html += f"<pre>{lstm_results}</pre>"
+
+                        output_html += "</pre>"
+                        slot_number += 1
+
+# Output files path
+output_file_txt = os.path.join(output_dir, "output.txt")
+output_file_html = os.path.join(output_dir, "output.html")
+
+# Save the result to the output TXT file
 with open(output_file_txt, "w", encoding="utf-8") as f:
     f.write(output_html)
 
-# Save the results to output HTML file
+# Save the result to the HTML output file
 with open(output_file_html, "w", encoding="utf-8") as f:
     f.write(output_html)
 
-# Open the HTML file in the browser
+# Opens the HTML file in the browser
 webbrowser.open(output_file_html)
 
 print("Results saved in folder C://Outputs")

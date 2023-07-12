@@ -1,6 +1,7 @@
 # Algorithm 1 - BILSTM-CE Model training
 # Dataset cleaning, pre-processing XML and create slots and embeddings
 # RNN Bidiretional LSTM Layer with word and char embeddings concatened
+
 # Results in file and browser
 
 # Imports
