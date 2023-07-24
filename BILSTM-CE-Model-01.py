@@ -14,6 +14,7 @@ import string
 from gensim.models import Word2Vec
 import tensorflow as tf
 import numpy as np
+from keras.layers import Dense
 
 # Downloads
 nltk.download('punkt')
@@ -165,15 +166,18 @@ for file in files:
 
                         # Print the token vector
                         output_html += f"<p>Slot de Tokens {slot_number}: {context_words}</p>"
-                        output_html += "<pre>"
 
                         # Word Embeddings
+                        output_html += f"<p>Word Embeddings {slot_number}: </p>"
+                        output_html += "<pre>"
                         for word in context_words:
                             word_embedding = tokenized_sent.wv[word].reshape((100, 1))
                             output_html += f"<p>{word}: {word_embedding}</p>"
                         output_html += "</pre>"
 
                         # Char Embeddings
+                        output_html += f"<p>Char Embeddings {slot_number}: </p>"
+                        output_html += "<pre>"
                         for word in context_words:
                             output_html += f"<p>{word}: {char_embedding(word)}</p>"
                         output_html += "</pre>"
@@ -205,6 +209,7 @@ for file in files:
 
                         # Create Bidirectional LSTM model
                         lstm_model = tf.keras.Sequential()
+                        lstm_model.add(Dense(units=32))
                         lstm_model.add(
                             tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(
                                 hidden_size, input_shape=(1, 120), dropout=0.1)))
@@ -231,7 +236,23 @@ for file in files:
                         # Print LSTM model results
                         output_html += "<p>Bidirectional LSTM Model Results:</p>"
                         lstm_results = lstm_model.predict(X)
-                        output_html += f"<pre>{lstm_results}</pre>"
+                        output_html += "<pre>"
+                        # Get the indices of the words in the Slot de Tokens
+                        word_indices = [tokenized_sent.wv.key_to_index[word.lower()] for word in context_words]
+                        # Create a dictionary mapping word indices to LSTM results
+                        results_dict = dict(zip(word_indices, lstm_results[0]))
+                        # Iterate over the words in the Slot de Tokens and print the corresponding LSTM result
+                        for word in context_words:
+                            word_index = tokenized_sent.wv.key_to_index[word.lower()]
+                            result = results_dict.get(word_index, 0.0)  # Default to 0.0 if word index not found
+                            if word == annotated_word:
+                                result = results_dict.get(word_index, 0.0)
+                            output_html += f"<p>{word}: {result}"
+                            if word != annotated_word:
+                                output_html += " - [O]"
+                            if word == annotated_word:
+                                output_html += " - [B-ReqTreatment]"
+                            output_html += "</p>"
 
                         output_html += "</pre>"
                         slot_number += 1

@@ -8,12 +8,12 @@ import os
 import xml.etree.ElementTree as ET
 import webbrowser
 import nltk
-from keras.layers import Dense
 from nltk.tokenize import sent_tokenize, word_tokenize
 import string
 from gensim.models import Word2Vec
 import tensorflow as tf
 import numpy as np
+from keras.layers import Dense
 
 # Downloads
 nltk.download('punkt')
@@ -156,9 +156,10 @@ for file in files:
 
                         # Print the token vector
                         output_html += f"<p>Slot de Tokens {slot_number}: {context_words}</p>"
-                        output_html += "<pre>"
 
                         # Word Embeddings
+                        output_html += f"<p>Word Embeddings {slot_number}: </p>"
+                        output_html += "<pre>"
                         for word in context_words:
                             word_embedding = tokenized_sent.wv[word].reshape((100, 1))
                             output_html += f"<p>{word}: {word_embedding}</p>"
