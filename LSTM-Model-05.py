@@ -1,4 +1,4 @@
-# Algorithm 1 - LSTM Model training
+# Algorithm 5 - LSTM Model training
 # Dataset cleaning, pre-processing XML and create slots and embeddings
 # RNN Bidiretional LSTM Layer
 # Results in file and browser
