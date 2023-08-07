@@ -156,9 +156,6 @@ for file in files:
                         num_classes = 10
                         sequence_length = 1
 
-                        # Transpose input
-                        concatenated_emb = np.transpose(concatenated_emb, (1, 0))
-
                         # Generate example data
                         num_samples = 1
                         # Reshape the input data

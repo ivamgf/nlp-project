@@ -128,9 +128,6 @@ for file in files:
                         num_classes = 10
                         sequence_length = 1
 
-                        # Transpose input
-                        word_embedding = np.transpose(word_embedding, (1, 0))
-
                         # Generate example data
                         num_samples = 1
                         # Reshape the input data
