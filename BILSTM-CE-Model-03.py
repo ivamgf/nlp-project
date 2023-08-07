@@ -16,6 +16,7 @@ import tensorflow as tf
 import numpy as np
 from keras.layers import Dense
 
+# -------------------------------------------------------------------------------------------
 # Downloads
 nltk.download('punkt')
 
@@ -32,6 +33,7 @@ output_html += "<h3>Arquivos encontrados no diretório:</h3>"
 
 slot_number = 1
 
+# -------------------------------------------------------------------------------------------
 # Functions
 
 # Char Embedding Function
@@ -43,6 +45,7 @@ def char_embedding(text):
         embedding[i] = ord(char)
     return embedding
 
+
 # Tokenize the sentences into words and create skipgram Word2Vec
 def tokenize_sentence(sentence):
     tokens = word_tokenize(sentence)
@@ -53,6 +56,7 @@ def tokenize_sentence(sentence):
 
     return model
 
+# -------------------------------------------------------------------------------------------
 # Loop through files in directory
 for file in files:
     if file.endswith(".xml"):
@@ -119,6 +123,7 @@ for file in files:
                         # Print the token vector
                         output_html += f"<p>Slot de Tokens {slot_number}: {context_words}</p>"
 
+                        # --------------------------------------------------------------------
                         # Word Embeddings
                         output_html += f"<p>Word Embeddings {slot_number}: </p>"
                         output_html += "<pre>"
@@ -144,6 +149,7 @@ for file in files:
                             output_html += f"<p>{word}: {concatenated_emb}</p>"
                         output_html += "</pre>"
 
+                        # --------------------------------------------------------------------
                         # Bidirectional LSTM model
                         input_size = concatenated_emb.shape[-1]
                         hidden_size = 64
@@ -209,6 +215,7 @@ for file in files:
                         output_html += "</pre>"
                         slot_number += 1
 
+# --------------------------------------------------------------------
 # Output files path
 output_file_txt = os.path.join(output_dir, "output.txt")
 output_file_html = os.path.join(output_dir, "output.html")

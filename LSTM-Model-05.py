@@ -1,7 +1,6 @@
-# Algorithm 1 - BILSTM-CE Model training
+# Algorithm 1 - LSTM Model training
 # Dataset cleaning, pre-processing XML and create slots and embeddings
-# RNN Bidiretional LSTM Layer with word and char embeddings concatened
-
+# RNN Bidiretional LSTM Layer
 # Results in file and browser
 
 # Imports
@@ -16,6 +15,7 @@ import tensorflow as tf
 import numpy as np
 from keras.layers import Dense
 
+# -------------------------------------------------------------------------------------------
 # Downloads
 nltk.download('punkt')
 
@@ -32,16 +32,8 @@ output_html += "<h3>Arquivos encontrados no diretório:</h3>"
 
 slot_number = 1
 
+# -------------------------------------------------------------------------------------------
 # Functions
-
-# Char Embedding Function
-def char_embedding(text):
-    embedding = np.zeros((20, 1))
-    for i, char in enumerate(text):
-        if i >= 20:
-            break
-        embedding[i] = ord(char)
-    return embedding
 
 # Tokenize the sentences into words and create skipgram Word2Vec
 def tokenize_sentence(sentence):
@@ -53,6 +45,7 @@ def tokenize_sentence(sentence):
 
     return model
 
+# -------------------------------------------------------------------------------------------
 # Loop through files in directory
 for file in files:
     if file.endswith(".xml"):
@@ -119,6 +112,7 @@ for file in files:
                         # Print the token vector
                         output_html += f"<p>Slot de Tokens {slot_number}: {context_words}</p>"
 
+                        # --------------------------------------------------------------------
                         # Word Embeddings
                         output_html += f"<p>Word Embeddings {slot_number}: </p>"
                         output_html += "<pre>"
@@ -127,36 +121,20 @@ for file in files:
                             output_html += f"<p>{word}: {word_embedding}</p>"
                         output_html += "</pre>"
 
-                        # Char Embeddings
-                        output_html += f"<p>Char Embeddings {slot_number}: </p>"
-                        output_html += "<pre>"
-                        for word in context_words:
-                            output_html += f"<p>{word}: {char_embedding(word)}</p>"
-                        output_html += "</pre>"
-
-                        # Word and Char Embedding concatenated
-                        output_html += "<p>Word and Char Embedding concatenated:</p>"
-                        output_html += "<pre>"
-                        for word in context_words:
-                            word_embedding = tokenized_sent.wv[word].reshape((100, 1))
-                            char_emb = char_embedding(word)
-                            concatenated_emb = np.concatenate((word_embedding, char_emb))
-                            output_html += f"<p>{word}: {concatenated_emb}</p>"
-                        output_html += "</pre>"
-
+                        # --------------------------------------------------------------------
                         # Bidirectional LSTM model
-                        input_size = concatenated_emb.shape[-1]
+                        input_size = word_embedding.shape[-1]
                         hidden_size = 64
                         num_classes = 10
                         sequence_length = 1
 
                         # Transpose input
-                        concatenated_emb = np.transpose(concatenated_emb, (1, 0))
+                        word_embedding = np.transpose(word_embedding, (1, 0))
 
                         # Generate example data
                         num_samples = 1
                         # Reshape the input data
-                        X = concatenated_emb.reshape((num_samples, 1, 120))
+                        X = word_embedding.reshape((num_samples, 1, 100))
                         y = tf.random.uniform((num_samples, num_classes))
 
                         # Create Bidirectional LSTM model
@@ -174,15 +152,15 @@ for file in files:
                         # Optimizer
                         optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate, rho=rho)
 
-                        # Compile o modelo
+                        # Compile the model
                         lstm_model.compile(
                             loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
 
-                        # Definir paciência (patience) e EarlyStopping
+                        # Define patience and EarlyStopping
                         patience = 10
                         early_stopping = tf.keras.callbacks.EarlyStopping(patience=patience, restore_best_weights=True)
 
-                        # Treinar o modelo com EarlyStopping
+                        # Train the model with EarlyStopping
                         lstm_model.fit(X, y, epochs=60, batch_size=32, callbacks=[early_stopping])
 
                         # Print LSTM model results
@@ -205,10 +183,11 @@ for file in files:
                             if word == annotated_word:
                                 output_html += " - [B-ReqTreatment]"
                             output_html += "</p>"
-
                         output_html += "</pre>"
+
                         slot_number += 1
 
+# --------------------------------------------------------------------
 # Output files path
 output_file_txt = os.path.join(output_dir, "output.txt")
 output_file_html = os.path.join(output_dir, "output.html")
